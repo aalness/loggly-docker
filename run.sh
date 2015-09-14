@@ -1,16 +1,5 @@
 #!/bin/sh
 
-# Fail if LOGGLY_AUTH_TOKEN is not set
-if [ -z "$LOGGLY_AUTH_TOKEN" ]; then
-  if [ ! -z "$TOKEN" ]; then
-    # grandfather old env var
-    export LOGGLY_AUTH_TOKEN=$TOKEN
-  else
-    echo "Missing \$LOGGLY_AUTH_TOKEN"
-    exit 1
-  fi
-fi
-
 # Fail if LOGGLY_TAG is not set
 if [ -z "$LOGGLY_TAG" ]; then
   if [ ! -z "$TAG" ]; then
@@ -21,6 +10,27 @@ if [ -z "$LOGGLY_TAG" ]; then
     exit 1
   fi
 fi
+
+# Fail if LOGGLY_CONFIG_BUCKET is not set
+if [ -z "$LOGGLY_CONFIG_BUCKET" ]; then
+  echo "Missing \$LOGGLY_CONFIG_BUCKET"
+  exit 1
+fi
+
+# Fail if LOGGLY_TOKEN_FILE is not set
+if [ -z "$LOGGLY_TOKEN_FILE" ]; then
+  echo "Missing \$LOGGLY_TOKEN_FILE"
+  exit 1
+fi
+
+# Fetch token from S3 bucket
+aws s3 cp s3://$LOGGLY_CONFIG_BUCKET/$LOGGLY_TOKEN_FILE /tmp/
+if [ ! -f /tmp/$LOGGLY_TOKEN_FILE ]; then
+  echo "Unable to retrieve loggly token"
+  exit 1
+fi
+LOGGLY_AUTH_TOKEN=`head -1 /tmp/$LOGGLY_TOKEN_FILE | tr -d "\n$"`
+rm -rf /tmp/$LOGGLY_TOKEN_FILE
 
 # Create spool directory
 mkdir -p /var/spool/rsyslog
